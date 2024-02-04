@@ -170,3 +170,19 @@ data "ibm_container_cluster_config" "cluster_config" {
   resource_group_id = module.ocp_base.resource_group_id
   config_dir        = "${path.module}/../../kubeconfig"
 }
+
+# Log into the OpenShift cluster as administrator
+resource "null_resource" "oc_login" {
+  triggers = {
+    always_run       = timestamp()
+    kube_config_path = local.kube_config_path
+  }
+  provisioner "local-exec" {
+    command = <<EOF
+      #!/bin/bash
+      oc login --token="${kubernetes_secret.sa_secret.data.token}" --server="${data.ibm_container_cluster_config.cluster_config.host}" --kubeconfig=${self.triggers.kube_config_path}
+      if [[ $? -ne 0 ]]; then exit 1; fi
+    EOF
+    # quiet   = true # Only supported in Terraform 1.6+
+  }
+}
